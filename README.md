@@ -1,6 +1,6 @@
-This repository contains the code for paper "Attackers Are Not the Same! Unveiling the Impact of Feature Distribution on Label Inference Attacks".
+This repository contains the code for paper [Attackers Are Not the Same! Unveiling the Impact of Feature Distribution on Label Inference Attacks](https://ieeexplore.ieee.org/document/10752967) published in IEEE Transactions on Information Forensics and Security (TIFS).
 
-# Version of essential packages
+# Requirements
 
 ```text
 python==3.8.18
@@ -84,11 +84,10 @@ optional arguments:
 Some examples:
 
 ```bash
-python main.py --attack='sign' --dataset='mnist' --num_passive=2
-python main.py --attack='sign' --dataset='cifar10' --simple --num_passive=4
-
-python main.py --attack='sign' --dataset='mnist' --num_passive=4 --division_mode='random'
-python main.py --attack='sign' --dataset='cifar10' --simple --num_passive=4 --division_mode='imbalanced'
+python main.py --attack sign --dataset mnist --num_passive 2
+python main.py --attack sign --dataset cifar10 --simple --num_passive 4
+python main.py --attack sign --dataset mnist --num_passive 4 --division_mode random
+python main.py --attack sign --dataset cifar10 --simple --num_passive 4 --division_mode imbalanced
 ```
 
 Notes：
@@ -100,10 +99,10 @@ Notes：
 Some examples:
 
 ```bash
-python main.py --attack='cluster' --dataset='mnist' --num_passive=2
-python main.py --attack='cluster' --dataset='mnist' --num_passive=2 --use_emb --lr_attack=0.1 --attack_id=1
-python main.py --attack='cluster' --dataset='cifar10' --simple --num_passive=4 --use_emb
-python main.py --attack='cluster' --dataset='cifar10' --simple --use_emb --num_passive=4 --division_mode='imbalanced'
+python main.py --attack cluster --dataset mnist --num_passive 2
+python main.py --attack cluster --dataset mnist --num_passive 2 --use_emb --lr_attack 0.1 --attack_id 1
+python main.py --attack cluster --dataset cifar10 --simple --num_passive 4 --use_emb
+python main.py --attack cluster --dataset cifar10 --simple --use_emb --num_passive 4 --division_mode imbalanced
 ```
 
 ## reconstruction attack
@@ -111,9 +110,8 @@ python main.py --attack='cluster' --dataset='cifar10' --simple --use_emb --num_p
 Some examples:
 
 ```bash
-python main.py --attack='reconstruction' --dataset='mnist' --num_passive=2
-
-python main.py --attack='reconstruction' --dataset='cifar10' --simple --num_passive=2 --attack_model_epochs=100 --set_attack_epoch --attack_epoch=3
+python main.py --attack reconstruction --dataset mnist --num_passive 2
+python main.py --attack reconstruction --dataset cifar10 --simple --num_passive 2 --attack_model_epochs 100 --set_attack_epoch --attack_epoch 3
 ```
 
 ## completion attack
@@ -121,11 +119,11 @@ python main.py --attack='reconstruction' --dataset='cifar10' --simple --num_pass
 Some examples:
 
 ```bash
-python main.py --attack='completion' --dataset='fashionmnist' --num_passive=2
-python main.py --attack='completion' --dataset='cifar100' --simple --num_passive=4
+python main.py --attack completion --dataset fashionmnist --num_passive 2
+python main.py --attack completion --dataset cifar100 --simple --num_passive 4
 ```
 
-# Structure of the files
+# Organization of code files
 
 ```bash
 .
@@ -136,10 +134,10 @@ python main.py --attack='completion' --dataset='cifar100' --simple --num_passive
 │   ├── reconstruction.py
 │   ├── sign.py
 │   └── vflbase.py
-├── data  # auto create: data for reconstruction-based LIA will be auto sotred here
-├── dataset  # auto create: dataset will be auto downloaded here
+├── data         # auto create: data for reconstruction-based LIA will be auto sotred here
+├── dataset      # auto create: dataset will be auto downloaded here
 ├── label_guess  # auto create: for model reconstruction and completion
-├── log  # auto create: training, testing and attacking record will be stored here
+├── log          # auto create: training, testing and attacking record will be stored here
 ├── main.py
 ├── README.md
 └── utils
@@ -155,53 +153,45 @@ python main.py --attack='completion' --dataset='cifar100' --simple --num_passive
 
 The main file and program entry. Use it to load dataset, model, attacker, and to implement the LIA and our proposed defense.
 
-## attackers/vflbase.py
+## attackers/*
 
-The base VFL model, all attacker classes are inherited from this class. In this file, the attack is organized as follows:
+- **vflbase.py**: The base VFL model, all attacker classes are inherited from this class. In this file, the attack is organized as follows:
+  - processing dataset
+  - setup VFL model
+  - setup metrics to record the information of training, testing, and attacking
+  - register hook to get gradients for attacker
+  - ( train or attack )
+  - defense mode: *Single* and *All*
+- **sign.py**: LIA using gradient sign. Due to the property of gradient sign, the attack of each passive parties is equal, because they can only use the last layer's gradient.
+- **cluster.py**: LIA using cluster. You can set to use embeddings (`--use_emb`) or gradients to attack.
+- **reconstruction.py**: LIA using model reconstruction. The data (embeddings, gradients, and labels) is auto stored in `data/` folder, and the surrogate labels are auto stored in `label_guess/` folder.
+- **completion.py**: LIA using model completion. The data (embeddings, gradients, and labels) is auto stored in `data/` folder.
+- **our.py**: Our proposed new defense strategy.
 
-- processing dataset
-- setup VFL model
-- setup metrics to record the information of training, testing, and attacking
-- register hook to get gradients for attacker
-- ( train or attack )
-- defense mode: *Single* and *All*
+## utils/*
 
-## attackers/sign.py
+- **datasets.py**: Store datasets information, which can be used to load and process different datasets.
+- **losses.py**: Loss classes for ExPLoit (Sanjay Kariyappa and Moinuddin K Qureshi. ExPLoit: Extracting private labels in split learning. In *SaTML*, pages 165–175, 2023.).
+- **metrics.py**: Class `Metrics` to record information to `log` folder. Different datasets and attack approaches will be stored in different children folder.
+- **models.py**: Neural network models for different datasets:
 
-LIA using gradient sign. Due to the property of gradient sign, the attack of each passive parties is equal, because they can only use the last layer's gradient.
+    | Dataset | Model |
+    | --- | --- |
+    | MNIST and FashionMNIST | FC1-FC1 (fully connected layer neural network) |
+    | CIFAR-10/100 | Conv4-FC2 (`--simple`) and ResNet |
+    | Criteo | DeepFM |
 
-## attackers/cluster.py
+# Citation
 
-LIA using cluster. You can set to use embeddings (`--use_emb`) or gradients to attack.
+If you use our code in your research, please cite our work：
 
-## attackers/reconstruction.py
-
-LIA using model reconstruction. The data (embeddings, gradients, and labels) is auto stored in `data/` folder, and the surrogate labels are auto stored in `label_guess/` folder.
-
-## attackers/completion.py
-
-LIA using model completion. The data (embeddings, gradients, and labels) is auto stored in `data/` folder.
-
-## attackers/our.py
-
-Our proposed new defense strategy.
-
-## utils/datasets.py
-
-Store datasets information, which can be used to load and process different datasets.
-
-## utils/losses.py
-
-Loss classes for ExPLoit (Sanjay Kariyappa and Moinuddin K Qureshi. ExPLoit: Extracting private labels in split learning. In *SaTML*, pages 165–175, 2023.).
-
-## utils/metrics.py
-
-Class `Metrics` to record information to `log` folder. Different datasets and attack approaches will be stored in different children folder.
-
-## utils/models.py
-
-Neural network models for different datasets:
-
-- MNIST and FashionMNIST: FC1-FC1
-- CIFAR-10/100: Conv4-FC2 (`--simple`) and ResNet
-- Criteo: DeepFM
+```latex
+@article{liu2025attackers,
+  author  = {Liu, Yige and Wang, Che and Lou, Yiwei and Cao, Yongzhi and Wang, Hanpin},
+  journal = {IEEE Transactions on Information Forensics and Security},
+  title   = {Attackers Are Not the Same! Unveiling the Impact of Feature Distribution on Label Inference Attacks},
+  volume  = {20},
+  pages   = {71-86},
+  year    = {2025},
+}
+```
